@@ -1,0 +1,104 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Camel Up Probability Calculator";
+}
+
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        box-sizing: border-box;
+    }
+
+    .layout {
+        display: flex;
+        align-items: flex-start;
+        width: 100vw;
+        height: 100vh;
+    }
+
+    .board {
+        flex: 0.65;
+        margin: 0;
+        padding: 0;
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        max-width: 100%;
+    }
+
+        .board img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+    .spacer {
+        width: 40px;
+    }
+
+    .sidebar {
+        width: 180px;
+        background-color: #fff8dc;
+        border-left: 2px solid #c2b280;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 10px;
+        box-sizing: border-box;
+        overflow-y: auto;
+    }
+
+    .camel {
+        width: 60px;
+        margin: 8px 0;
+        cursor: grab;
+    }
+
+    .info {
+        margin-top: 20px;
+        font-size: 0.9rem;
+        text-align: center;
+    }
+</style>
+
+<div class="layout">
+    <div class="board" id="board">
+        <img src="/images/CamelBoard.jpg" alt="Camel Up Board" id="boardImage" />
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="sidebar" id="sidebar">
+        <img src="/images/camel_red.png" alt="Red Camel" class="camel" draggable="true" id="camelRed" />
+        <img src="/images/camel_blue.png" alt="Blue Camel" class="camel" draggable="true" id="camelBlue" />
+        <img src="/images/camel_green.png" alt="Green Camel" class="camel" draggable="true" id="camelGreen" />
+        <img src="/images/camel_yellow.png" alt="Yellow Camel" class="camel" draggable="true" id="camelYellow" />
+        <img src="/images/camel_purple.png" alt="Purple Camel" class="camel" draggable="true" id="camelPurple" /> <!--This Camel Meeple is 82x64 pixels, might lower it down to 32? Too large for the board when stacking.-->
+
+        <div class="info">
+            <p><strong>How to use the calculator:</strong></p>
+            <p>Drag camels onto the board and stack in the correct order.</p>
+            <p>This panel will automatically display the probability of which camel will win the leg.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.addEventListener('load', function () {
+        const boardImage = document.getElementById('boardImage');
+        const sidebar = document.getElementById('sidebar');
+
+        function matchSidebarHeight() {
+            if (boardImage && sidebar) {
+                sidebar.style.height = boardImage.clientHeight + 'px';
+            }
+        }
+
+        matchSidebarHeight();
+        window.addEventListener('resize', matchSidebarHeight);
+    });
+</script>
