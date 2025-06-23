@@ -18,7 +18,7 @@ namespace CamelUpProbabilityCalc.Logic
                 .Where(color => !gameState.DiceRolled.Any(d => d.Color.Equals(color, StringComparison.OrdinalIgnoreCase)))
                 .ToList();
 
-            // STEP 2: If all dice are rolled, simply find who's in the lead
+            // STEP 2: If all dice are rolled,find who's in the lead
             if (remainingCamels.Count == 0)
             {
                 var leadingCamel = gameState.Camels
