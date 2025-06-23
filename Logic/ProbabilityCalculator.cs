@@ -9,68 +9,75 @@ namespace CamelUpProbabilityCalc.Logic
     {
         private static readonly string[] CamelColors = { "Blue", "Green", "Red", "Yellow", "Purple" };
 
+        private static readonly Dictionary<int, double> MoveProbabilities = new()
+        {
+            { 1, 1.0 / 3 },
+            { 2, 1.0 / 3 },
+            { 3, 1.0 / 3 }
+        };
+
         public static Dictionary<string, double> CalculateWinProbabilities(GameState gameState)
         {
-            var probabilities = new Dictionary<string, double>();
+            var probabilities = CamelColors.ToDictionary(color => color, _ => 0.0);
 
-            // STEP 1: Filter out the camels that still have a dice to roll
-            var remainingCamels = CamelColors
+            var remainingColors = CamelColors
                 .Where(color => !gameState.DiceRolled.Any(d => d.Color.Equals(color, StringComparison.OrdinalIgnoreCase)))
                 .ToList();
 
-            // STEP 2: If all dice are rolled,find who's in the lead
-            if (remainingCamels.Count == 0)
+            if (remainingColors.Count == 0)
             {
-                var leadingCamel = gameState.Camels
+                var leading = gameState.Camels
                     .OrderByDescending(c => c.Space)
                     .ThenByDescending(c => c.StackIndex)
                     .FirstOrDefault();
 
-                foreach (var camel in CamelColors)
+                foreach (var color in CamelColors)
                 {
-                    probabilities[camel] = camel == leadingCamel.Color ? 100.0 : 0.0;
+                    probabilities[color] = color == leading.Color ? 100.0 : 0.0;
                 }
 
                 return probabilities;
             }
 
-            // STEP 3: Run simulations for remaining camels
-            var winCounts = CamelColors.ToDictionary(color => color, _ => 0);
-            int simulations = 10000;
-            var random = new Random();
+            ExploreAllOutcomes(gameState, remainingColors, 1.0, probabilities);
 
-            for (int i = 0; i < simulations; i++)
+            // Normalize to sum to 100%
+            double total = probabilities.Values.Sum();
+            if (total > 0)
             {
-                var simulatedState = gameState.DeepClone();
-                SimulateRound(simulatedState, random);
-
-                var winner = simulatedState.Camels
-                    .OrderByDescending(c => c.Space)
-                    .ThenByDescending(c => c.StackIndex)
-                    .First();
-
-                winCounts[winner.Color]++;
-            }
-
-            foreach (var camel in CamelColors)
-            {
-                probabilities[camel] = (double)winCounts[camel] / simulations * 100.0;
+                foreach (var color in CamelColors.ToList())
+                {
+                    probabilities[color] = probabilities[color] / total * 100.0;
+                }
             }
 
             return probabilities;
         }
 
-        private static void SimulateRound(GameState state, Random random)
+        private static void ExploreAllOutcomes(GameState state, List<string> remainingColors, double currentProb, Dictionary<string, double> winTally)
         {
-            var remaining = state.GetRemainingCamelColors();
-
-            // Shuffle remaining dice
-            remaining = remaining.OrderBy(_ => random.Next()).ToList();
-
-            foreach (var color in remaining)
+            if (remainingColors.Count == 0)
             {
-                int move = random.Next(1, 4); // Simulate 1, 2, or 3
-                state.MoveCamel(color, move);
+                var leader = state.Camels
+                    .OrderByDescending(c => c.Space)
+                    .ThenByDescending(c => c.StackIndex)
+                    .First();
+
+                winTally[leader.Color] += currentProb;
+                return;
+            }
+
+            foreach (var color in remainingColors)
+            {
+                foreach (var move in MoveProbabilities)
+                {
+                    var nextState = state.DeepClone();
+                    nextState.MoveCamelWithStack(color, move.Key);
+                    nextState.DiceRolled.Add(new DiceRoll { Color = color, Value = move.Key });
+
+                    var nextRemaining = remainingColors.Where(c => c != color).ToList();
+                    ExploreAllOutcomes(nextState, nextRemaining, currentProb * move.Value, winTally);
+                }
             }
         }
     }

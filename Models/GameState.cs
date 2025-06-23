@@ -43,25 +43,95 @@ namespace CamelUpProbabilityCalc.Models
 
         public void MoveCamel(string color, int spaces)
         {
-            if (!CamelStates.TryGetValue(color, out var camel))
+            if (!CamelStates.TryGetValue(color, out var baseCamel))
                 return;
 
-            int currentSpace = ParseDropZoneNumber(camel.DropZone);
+            int currentSpace = ParseDropZoneNumber(baseCamel.DropZone);
+
+            // Get all camels at this space, sorted bottom-to-top
+            var stack = CamelStates
+                .Where(c => ParseDropZoneNumber(c.Value.DropZone) == currentSpace)
+                .OrderBy(c => c.Value.StackIndex)
+                .ToList();
+
+            // Find the index of the moving camel
+            int baseIndex = stack.FindIndex(c => c.Key.Equals(color, StringComparison.OrdinalIgnoreCase));
+
+            // Only move the camel and any camels on top of it
+            var movingStack = stack.Skip(baseIndex).ToList();
+
             int newSpace = currentSpace + spaces;
             string newDropZone = $"space-{newSpace}";
 
-            int maxStackIndex = CamelStates
+            // Find top of destination stack
+            int destinationTopIndex = CamelStates
                 .Where(c => c.Value.DropZone == newDropZone)
                 .Select(c => c.Value.StackIndex)
                 .DefaultIfEmpty(-1)
                 .Max();
 
-            CamelStates[color] = new CamelState
+            // Reassign the camels to the new drop zone, stacked above existing
+            for (int i = 0; i < movingStack.Count; i++)
             {
-                DropZone = newDropZone,
-                StackIndex = maxStackIndex + 1
-            };
+                var camelColor = movingStack[i].Key;
+                CamelStates[camelColor] = new CamelState
+                {
+                    DropZone = newDropZone,
+                    StackIndex = destinationTopIndex + 1 + i
+                };
+            }
         }
+
+        public void MoveCamelWithStack(string color, int spaces)
+        {
+            if (!CamelStates.TryGetValue(color, out var camel))
+                return;
+
+            int currentSpace = ParseDropZoneNumber(camel.DropZone);
+
+            // Get full stack at current space (bottom to top)
+            var stack = CamelStates
+                .Where(c => ParseDropZoneNumber(c.Value.DropZone) == currentSpace)
+                .OrderBy(c => c.Value.StackIndex)
+                .Select(c => c.Key)
+                .ToList();
+
+            // Find where in the stack the moving camel is
+            int indexInStack = stack.IndexOf(color);
+
+            // All camels above (including self) move together
+            var camelsToMove = stack.Skip(indexInStack).ToList();
+
+            int newSpace = currentSpace + spaces;
+            string newDropZone = $"space-{newSpace}";
+
+            // Determine the stack index at the new location
+            int baseStackIndex = CamelStates
+                .Where(c => c.Value.DropZone == newDropZone)
+                .Select(c => c.Value.StackIndex)
+                .DefaultIfEmpty(-1)
+                .Max() + 1;
+
+            // Move each camel in order, preserving relative stack
+            for (int i = 0; i < camelsToMove.Count; i++)
+            {
+                var c = camelsToMove[i];
+                CamelStates[c] = new CamelState
+                {
+                    DropZone = newDropZone,
+                    StackIndex = baseStackIndex + i
+                };
+            }
+        }
+
+
+
+
+
+
+
+
+
 
         private int ParseDropZoneNumber(string dropZoneId)
         {
