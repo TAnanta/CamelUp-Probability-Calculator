@@ -9,6 +9,7 @@
         margin: 0;
         padding: 0;
         height: 100%;
+        overflow: auto;
         box-sizing: border-box;
     }
 
@@ -20,18 +21,44 @@
 
     .board {
         width: 1200px;
+        height: auto;
         margin: 0;
         padding: 0;
         position: relative;
         display: flex;
         justify-content: center;
         align-items: center;
+        flex-shrink: 0;
     }
 
         .board img {
-            max-width: 100%;
+            width: 1200px;
             height: auto;
             display: block;
+        }
+
+    .drop-zone {
+        position: absolute;
+        width: 110px;
+        height: 100px;
+        border: 2px dashed #aaa;
+        box-sizing: border-box;
+        z-index: 2;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        flex-direction: column;
+        padding: 2px;
+    }
+
+
+        .drop-zone::after {
+            content: attr(id);
+            color: red;
+            font-size: 12px;
+            position: absolute;
+            top: -18px;
+            left: 0;
         }
 
     .spacer {
@@ -50,12 +77,21 @@
         overflow-y: auto;
     }
 
+    .camel-holding-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+    }
+
     .camel {
+        margin: 2px auto 0 auto;
         width: 48px;
         height: auto;
-        margin: 8px 0;
         cursor: grab;
     }
+
+
 
     .info {
         margin-top: 20px;
@@ -67,16 +103,43 @@
 <div class="layout">
     <div class="board" id="board">
         <img src="/images/CamelBoard.jpg" alt="Camel Up Board" id="boardImage" />
+
+        <!-- Drop zones Y,X coordinate to match with board tiles -->
+        <div class="drop-zone" id="space-1" style="top: 185px; left: 455px;"></div>
+        <div class="drop-zone" id="space-2" style="top: 140px; left: 595px;"></div>
+
+        <div class="drop-zone" id="space-3" style="top: 90px; left: 730px;"></div>
+        <div class="drop-zone" id="space-4" style="top: 75px; left: 868px;"></div>
+
+        <div class="drop-zone" id="space-5" style="top: 160px; left: 990px;"></div>
+        <div class="drop-zone" id="space-6" style="top: 320px; left: 1010px;"></div>
+
+        <div class="drop-zone" id="space-7" style="top: 475px; left: 990px;"></div>
+        <div class="drop-zone" id="space-8" style="top: 625px; left: 920px;"></div>
+
+        <div class="drop-zone" id="space-9" style="top: 725px; left: 780px;"></div>
+        <div class="drop-zone" id="space-10" style="top: 785px; left: 600px;"></div>
+
+        <div class="drop-zone" id="space-11" style="top: 790px; left: 415px;"></div>
+        <div class="drop-zone" id="space-12" style="top: 735px; left: 240px;"></div>
+
+        <div class="drop-zone" id="space-13" style="top: 620px; left: 110px;"></div>
+        <div class="drop-zone" id="space-14" style="top: 455px; left: 95px;"></div>
+
+        <div class="drop-zone" id="space-15" style="top: 300px; left: 145px;"></div>
+        <div class="drop-zone" id="space-16" style="top: 230px; left: 295px;"></div>
     </div>
 
     <div class="spacer"></div>
 
     <div class="sidebar" id="sidebar">
-        <img src="/images/camel_blue.png" alt="Blue Camel" class="camel" draggable="true" id="camelBlue" />
-        <img src="/images/camel_green.png" alt="Green Camel" class="camel" draggable="true" id="camelGreen" />
-        <img src="/images/camel_red.png" alt="Red Camel" class="camel" draggable="true" id="camelRed" />
-        <img src="/images/camel_yellow.png" alt="Yellow Camel" class="camel" draggable="true" id="camelYellow" />
-        <img src="/images/camel_purple.png" alt="Purple Camel" class="camel" draggable="true" id="camelPurple" /> <!--This Camel Meeple is 82x64 pixels, might lower it down to 32? Too large for the board when stacking.-->
+        <div id="camelHome" class="camel-holding-area">
+            <img src="/images/camel_blue.png" alt="Blue Camel" class="camel" draggable="true" id="camelBlue" />
+            <img src="/images/camel_green.png" alt="Green Camel" class="camel" draggable="true" id="camelGreen" />
+            <img src="/images/camel_red.png" alt="Red Camel" class="camel" draggable="true" id="camelRed" />
+            <img src="/images/camel_yellow.png" alt="Yellow Camel" class="camel" draggable="true" id="camelYellow" />
+            <img src="/images/camel_purple.png" alt="Purple Camel" class="camel" draggable="true" id="camelPurple" />
+        </div>
 
         <div class="info">
             <p><strong>How to use the calculator:</strong></p>
@@ -87,6 +150,84 @@
 </div>
 
 <script>
+    let draggedCamel = null;
+
+    function attachDoubleClickToCamels() {
+        const camelOrder = ['camelBlue', 'camelGreen', 'camelRed', 'camelYellow', 'camelPurple'];
+
+        document.querySelectorAll('.camel').forEach(camel => {
+            camel.ondblclick = function () {
+                const home = document.getElementById('camelHome');
+                const id = this.id;
+
+                const index = camelOrder.indexOf(id);
+                if (index === -1) return;
+
+                const allCamels = Array.from(home.children);
+                let inserted = false;
+                for (let i = 0; i < allCamels.length; i++) {
+                    const currentIndex = camelOrder.indexOf(allCamels[i].id);
+                    if (currentIndex > index) {
+                        home.insertBefore(this, allCamels[i]);
+                        inserted = true;
+                        break;
+                    }
+                }
+                if (!inserted) {
+                    home.appendChild(this);
+                }
+
+                this.style.position = "relative";
+                this.style.top = "0";
+                this.style.left = "0";
+                this.style.margin = "2px 0";
+                this.style.width = "48px";
+                this.style.height = "auto";
+            };
+        });
+    }
+
+    document.querySelectorAll('.camel').forEach(camel => {
+        camel.addEventListener('dragstart', function () {
+            draggedCamel = this;
+        });
+    });
+
+    document.querySelectorAll('.drop-zone').forEach(zone => {
+        zone.addEventListener('dragover', function (e) {
+            e.preventDefault();
+        });
+
+        zone.addEventListener('drop', function (e) {
+            e.preventDefault();
+            if (!draggedCamel) return;
+
+            const target = e.target;
+            if (target.classList.contains('camel') && target.parentElement === this) {
+                const mouseY = e.clientY;
+                const targetRect = target.getBoundingClientRect();
+
+                if (mouseY < targetRect.top + targetRect.height / 2) {
+                    this.insertBefore(draggedCamel, target); // insert camel above
+                } else {
+                    this.insertBefore(draggedCamel, target.nextSibling); // insert below
+                }
+            } else {
+                this.appendChild(draggedCamel);
+            }
+
+            draggedCamel.style.position = "relative";
+            draggedCamel.style.top = "0";
+            draggedCamel.style.left = "0";
+            draggedCamel.style.margin = "2px 0";
+            draggedCamel.style.width = "48px";
+            draggedCamel.style.height = "auto";
+            draggedCamel = null;
+
+            attachDoubleClickToCamels();
+        });
+    });
+
     window.addEventListener('load', function () {
         const boardImage = document.getElementById('boardImage');
         const sidebar = document.getElementById('sidebar');
@@ -99,5 +240,7 @@
 
         matchSidebarHeight();
         window.addEventListener('resize', matchSidebarHeight);
+
+        attachDoubleClickToCamels();
     });
 </script>
