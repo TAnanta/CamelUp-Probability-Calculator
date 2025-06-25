@@ -7,45 +7,32 @@ namespace CamelUpProbabilityCalc.Logic
 {
     public static class ProbabilityCalculator
     {
+        // These are the five camel colors used throughout the game
         private static readonly string[] CamelColors = { "Blue", "Green", "Red", "Yellow", "Purple" };
 
+        // Each die has a 2/6 chance of rolling a 1, 2, or 3 — standard for Camel Up
         private static readonly Dictionary<int, double> MoveProbabilities = new()
         {
-            { 1, 1.0 / 3 },
-            { 2, 1.0 / 3 },
-            { 3, 1.0 / 3 }
+            { 1, 2.0 / 6 },
+            { 2, 2.0 / 6 },
+            { 3, 2.0 / 6 }
         };
 
+        // Main method that gets called to compute each camel's chance of winning the leg
         public static Dictionary<string, double> CalculateWinProbabilities(GameState gameState)
         {
+            // Set up default dictionary, each camel starts at 0% chance
             var probabilities = CamelColors.ToDictionary(color => color, _ => 0.0);
 
-            var remainingColors = CamelColors
-                .Where(color => !gameState.DiceRolled.Any(d => d.Color.Equals(color, StringComparison.OrdinalIgnoreCase)))
-                .ToList();
+            // Begin exploring all the ways dice can be rolled this round
+            // We use a cloned state to avoid messing up the original
+            ExploreAllRollOrders(gameState.DeepClone(), new HashSet<string>(), 1.0, probabilities);
 
-            if (remainingColors.Count == 0)
-            {
-                var leading = gameState.Camels
-                    .OrderByDescending(c => c.Space)
-                    .ThenByDescending(c => c.StackIndex)
-                    .FirstOrDefault();
-
-                foreach (var color in CamelColors)
-                {
-                    probabilities[color] = color == leading.Color ? 100.0 : 0.0;
-                }
-
-                return probabilities;
-            }
-
-            ExploreAllOutcomes(gameState, remainingColors, 1.0, probabilities);
-
-            // Normalize to sum to 100%
+            // Once all branches are explored, normalize values to sum up to 100%
             double total = probabilities.Values.Sum();
             if (total > 0)
             {
-                foreach (var color in CamelColors.ToList())
+                foreach (var color in CamelColors)
                 {
                     probabilities[color] = probabilities[color] / total * 100.0;
                 }
@@ -54,29 +41,39 @@ namespace CamelUpProbabilityCalc.Logic
             return probabilities;
         }
 
-        private static void ExploreAllOutcomes(GameState state, List<string> remainingColors, double currentProb, Dictionary<string, double> winTally)
+        // Recursively simulate every legal combination of dice rolls
+        private static void ExploreAllRollOrders(GameState state, HashSet<string> usedDice, double currentProb, Dictionary<string, double> winTally)
         {
-            if (remainingColors.Count == 0)
+            // Base case: all dice have been rolled — pick whoever's winning right now
+            if (usedDice.Count == CamelColors.Length)
             {
                 var leader = state.Camels
-                    .OrderByDescending(c => c.Space)
-                    .ThenByDescending(c => c.StackIndex)
+                    .OrderByDescending(c => c.Space)       // First by board space
+                    .ThenByDescending(c => c.StackIndex)   // Then by stack position (top wins ties)
                     .First();
 
+                // Add this outcome’s probability to the winner’s tally
                 winTally[leader.Color] += currentProb;
                 return;
             }
 
-            foreach (var color in remainingColors)
+            // Try all unused dice next
+            foreach (var color in CamelColors.Where(c => !usedDice.Contains(c)))
             {
+                // Try rolling a 1, 2, or 3 (each with 2/6 chance)
                 foreach (var move in MoveProbabilities)
                 {
-                    var nextState = state.DeepClone();
+                    var nextState = state.DeepClone(); // Avoid side effects
+
+                    // Move that camel (and carry anyone stacked above it)
                     nextState.MoveCamelWithStack(color, move.Key);
+
+                    // Mark this die as rolled
+                    var nextUsed = new HashSet<string>(usedDice) { color };
                     nextState.DiceRolled.Add(new DiceRoll { Color = color, Value = move.Key });
 
-                    var nextRemaining = remainingColors.Where(c => c != color).ToList();
-                    ExploreAllOutcomes(nextState, nextRemaining, currentProb * move.Value, winTally);
+                    // Dive deeper into the recursion tree
+                    ExploreAllRollOrders(nextState, nextUsed, currentProb * move.Value, winTally);
                 }
             }
         }
