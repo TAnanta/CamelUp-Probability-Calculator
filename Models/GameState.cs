@@ -60,7 +60,9 @@ namespace CamelUpProbabilityCalc.Models
             int newSpace = currentSpace + spaces;
             string newDropZone = $"space-{newSpace}";
 
+            /*===========================DEBUG MOVEMENT PRINTING===============================
             Console.WriteLine($"[{color}] moves {spaces} from space-{currentSpace} to space-{newSpace} carrying: {string.Join(", ", movingUnit)}");
+            ===================================================================================*/
 
             var existing = CamelStates
                 .Where(c => ParseDropZoneNumber(c.Value.DropZone) == newSpace && !movingUnit.Contains(c.Key))
@@ -79,8 +81,9 @@ namespace CamelUpProbabilityCalc.Models
                     StackIndex = i
                 };
             }
-
+            /*===========================DEBUG MOVEMENT PRINTING==============================
             Console.WriteLine($"→ New stack at {newDropZone}: {string.Join(", ", newStack.Select(c => $"{c}({CamelStates[c].StackIndex})"))}");
+            ===================================================================================*/
 
             foreach (var movedCamel in movingUnit)
             {
@@ -124,5 +127,5 @@ namespace CamelUpProbabilityCalc.Models
             Console.WriteLine();
         }
         =====================================================================================*/
+        }
     }
-}
