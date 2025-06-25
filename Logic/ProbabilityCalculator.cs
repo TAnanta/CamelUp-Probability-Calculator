@@ -1,6 +1,7 @@
 ﻿using CamelUpProbabilityCalc.Models;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Linq;
 
 namespace CamelUpProbabilityCalc.Logic
@@ -23,10 +24,61 @@ namespace CamelUpProbabilityCalc.Logic
         {
             // Set up default dictionary, each camel starts at 0% chance
             var probabilities = CamelColors.ToDictionary(color => color, _ => 0.0);
+            var remainingDice = gameState.GetRemainingCamelColors();
 
-            // Begin exploring all the ways dice can be rolled this round
-            // We use a cloned state to avoid messing up the original
-            ExploreAllRollOrders(gameState.DeepClone(), new HashSet<string>(), 1.0, probabilities);
+            // Generate all valid dice roll *orders* (permutations)
+            var rollOrders = GetPermutations(remainingDice, remainingDice.Count);
+
+            /*============debug============
+            Console.WriteLine("=== Starting Simulation ===");
+            gameState.PrintBoardState();
+            ===============================*/
+
+            foreach (var order in rollOrders)
+            {
+                // Generate all value combinations for this roll order
+
+
+                var valueCombos = GetAllDiceValueCombinations(order.Count()).ToList(); // combo becomes indexable
+                var orderList = order.ToList(); // make order indexable
+
+                foreach (var combo in valueCombos)
+                {
+                    // Always clone from the original board state
+                    var cloned = gameState.DeepClone();
+
+                    for (int i = 0; i < orderList.Count; i++)
+                    {
+                        string color = orderList[i];
+                        int value = combo[i];
+
+                        cloned.MoveCamelWithStack(color, value);
+                        cloned.DiceRolled.Add(new DiceRoll { Color = color, Value = value });
+                    }
+
+                    /* =============debug=============
+                    Console.WriteLine("==== Final Board State ====");
+                    cloned.PrintBoardState();
+                    ===================================*/
+
+            //After all dice have been rolled, determine the current leader
+            var leader = cloned.Camels
+                        .OrderByDescending(c => c.Space)
+                        .ThenByDescending(c => c.StackIndex)
+                        .First();
+
+                    /*===================debug==================
+                    Console.WriteLine($"Winner: {leader.Color}, Space: {leader.Space}, StackIndex: {leader.StackIndex}");
+                    Console.WriteLine("Rolled Dice: " + string.Join(", ", order.Zip(combo, (color, val) => $"{color}:{val}")));
+                    Console.WriteLine();
+                    //Console.WriteLine("Press any key to continue...");
+                    //Console.ReadKey();
+                    ================================================*/
+
+                    double branchProb = combo.Select(v => MoveProbabilities[v]).Aggregate(1.0, (a, b) => a * b);
+                    probabilities[leader.Color] += branchProb;
+                }
+            }
 
             // Once all branches are explored, normalize values to sum up to 100%
             double total = probabilities.Values.Sum();
@@ -41,41 +93,40 @@ namespace CamelUpProbabilityCalc.Logic
             return probabilities;
         }
 
-        // Recursively simulate every legal combination of dice rolls
-        private static void ExploreAllRollOrders(GameState state, HashSet<string> usedDice, double currentProb, Dictionary<string, double> winTally)
+        // Generate all possible dice value combinations for N dice
+        private static List<List<int>> GetAllDiceValueCombinations(int diceCount)
         {
-            // Base case: all dice have been rolled — pick whoever's winning right now
-            if (usedDice.Count == CamelColors.Length)
-            {
-                var leader = state.Camels
-                    .OrderByDescending(c => c.Space)       // First by board space
-                    .ThenByDescending(c => c.StackIndex)   // Then by stack position (top wins ties)
-                    .First();
+            var results = new List<List<int>>();
 
-                // Add this outcome’s probability to the winner’s tally
-                winTally[leader.Color] += currentProb;
-                return;
-            }
-
-            // Try all unused dice next
-            foreach (var color in CamelColors.Where(c => !usedDice.Contains(c)))
+            void Backtrack(List<int> current)
             {
-                // Try rolling a 1, 2, or 3 (each with 2/6 chance)
-                foreach (var move in MoveProbabilities)
+                if (current.Count == diceCount)
                 {
-                    var nextState = state.DeepClone(); // Avoid side effects
+                    results.Add(new List<int>(current));
+                    return;
+                }
 
-                    // Move that camel (and carry anyone stacked above it)
-                    nextState.MoveCamelWithStack(color, move.Key);
-
-                    // Mark this die as rolled
-                    var nextUsed = new HashSet<string>(usedDice) { color };
-                    nextState.DiceRolled.Add(new DiceRoll { Color = color, Value = move.Key });
-
-                    // Dive deeper into the recursion tree
-                    ExploreAllRollOrders(nextState, nextUsed, currentProb * move.Value, winTally);
+                foreach (var val in MoveProbabilities.Keys)
+                {
+                    current.Add(val);
+                    Backtrack(current);
+                    current.RemoveAt(current.Count - 1);
                 }
             }
+
+            Backtrack(new List<int>());
+            return results;
+        }
+
+        // Helper to generate permutations of a list (used for dice order)
+        private static IEnumerable<IEnumerable<T>> GetPermutations<T>(IEnumerable<T> list, int length)
+        {
+            if (length == 1)
+                return list.Select(t => new T[] { t });
+
+            return GetPermutations(list, length - 1)
+                .SelectMany(t => list.Where(e => !t.Contains(e)),
+                            (t1, t2) => t1.Concat(new T[] { t2 }));
         }
     }
 }

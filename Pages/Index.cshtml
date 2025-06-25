@@ -41,8 +41,8 @@
         position: absolute;
         width: 110px;
         height: 100px;
-        <!--border: 2px dashed #aaa;--> <!--Debug Border for Drop Zone--> 
-        border: none;
+        <!-- border: 2px dashed #aaa; --> <!--
+        Debug Border for Drop Zone--> border: none;
         box-sizing: border-box;
         z-index: 2;
         display: flex;
@@ -57,16 +57,16 @@
         }
 
 
-<!--Debug Drop Zone Title -->
- <!--       .drop-zone::after {   
-            content: attr(id);
-            color: red;
-            font-size: 12px;
-            position: absolute;
-            top: -18px;
-            left: 0;
-        }
--->
+    <!-- Debug Drop Zone Title -->
+    <!-- .drop-zone::after {
+        content: attr(id);
+        color: red;
+        font-size: 12px;
+        position: absolute;
+        top: -18px;
+        left: 0;
+    }
+    -->
     .spacer {
         width: 40px;
     }
@@ -355,22 +355,22 @@
     async function triggerProbabilityUpdate() {
         const camelStates = {};
         document.querySelectorAll('.drop-zone').forEach(zone => {
-            const camels = Array.from(zone.querySelectorAll('.camel'));
-            camels.forEach((camel, index) => {
-                camelStates[camel.id.replace('camel', '')] = {
-                    DropZone: zone.id,
-                    StackIndex: index
-                };
-            });
+        const camels = Array.from(zone.querySelectorAll('.camel')).reverse();
+        camels.forEach((camel, index) => {
+            camelStates[camel.id.replace('camel', '')] = {
+                DropZone: zone.id,
+                StackIndex: index
+            };
+        });
         });
 
         const diceRolled = [];
         for (let i = 1; i <= 5; i++) {
             const color = document.querySelector(`.camel-select[data-group="${i}"]`)?.value;
             const value = document.querySelector(`.number-select[data-group="${i}"]`)?.value;
-            if (color && value && color !== "-" && value !== "-") {
-                diceRolled.push({ Color: color, Value: parseInt(value) });
-            }
+                if (color && value && color !== "-" && value !== "-") {
+                    diceRolled.push({ Color: color, Value: parseInt(value) });
+                }
         }
 
         const gameState = { CamelStates: camelStates, DiceRolled: diceRolled };
@@ -383,8 +383,12 @@
 
         if (response.ok) {
             const result = await response.json();
+
+            // Normalize color casing to match input element IDs (e.g., winnerRed)
+            const pascalCase = str => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+
             for (const [color, percentage] of Object.entries(result)) {
-                const input = document.getElementById(`winner${color}`);
+                const input = document.getElementById(`winner${pascalCase(color)}`);
                 if (input) input.value = `${percentage.toFixed(1)}%`;
             }
         } else {
